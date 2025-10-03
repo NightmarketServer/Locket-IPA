@@ -1,13 +1,15 @@
-// deleteHeader.js - remove certain headers to avoid server detection
+// deleteHeader.js - NightmarketServer
+// Remove headers that might be used by RevenueCat/app server to detect tampering
+
 var req = $request;
 var headers = req.headers || {};
 
-// Remove potentially sensitive headers
+// Remove a set of headers that can trigger server-side checks
 delete headers['x-revenuecat-etag'];
 delete headers['x-revenuecat-signature'];
 delete headers['if-none-match'];
 delete headers['if-modified-since'];
-delete headers['x-platform'];
-delete headers['user-agent']; // optional: nếu bạn set UA ở config, client sẽ dùng giá trị đó
+// Optionally remove user-agent if you want to force the UA from the config (uncomment if desired)
+// delete headers['user-agent'];
 
 $done({ headers: headers });
