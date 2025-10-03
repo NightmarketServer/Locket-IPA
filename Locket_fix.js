@@ -1,35 +1,30 @@
 /*
- * forceGold_merged.js - NightmarketServer
- * Robust merge into RevenueCat response:
- * - đảm bảo nhiều key subscription + entitlement (Gold, premium, pro, vip+watch_vip)
- * - không ghi đè toàn bộ obj.subscriber (merge an toàn)
- * - dùng specificDate để đồng bộ
+ * Locket_fix.js - NightmarketServer
+ * Robust merged fixer for RevenueCat responses: add/merge common subscriptions & entitlements
+ * Use as an http-response script for api.revenuecat.com
  */
 
 var specificDate = "2025-09-02T00:00:00Z";
 
-(function(){
+(function () {
   if (!$response || !$response.body) {
     $done({});
     return;
   }
 
-  var body = $response.body;
   var obj;
   try {
-    obj = JSON.parse(body);
+    obj = JSON.parse($response.body);
   } catch (e) {
-    console.log("forceGold_merged: JSON parse error:", e);
+    console.log("Locket_fix: JSON parse error:", e);
     $done({});
     return;
   }
 
-  // Ensure structures exist
   if (!obj.subscriber) obj.subscriber = {};
   if (!obj.subscriber.subscriptions || typeof obj.subscriber.subscriptions !== "object") obj.subscriber.subscriptions = obj.subscriber.subscriptions || {};
   if (!obj.subscriber.entitlements || typeof obj.subscriber.entitlements !== "object") obj.subscriber.entitlements = obj.subscriber.entitlements || {};
 
-  // Helper: create subscription object
   function makeSub() {
     return {
       is_sandbox: false,
@@ -45,8 +40,7 @@ var specificDate = "2025-09-02T00:00:00Z";
     };
   }
 
-  // Helper: create entitlement object
-  function makeEnt(productId){
+  function makeEnt(productId) {
     return {
       grace_period_expires_date: null,
       purchase_date: specificDate,
@@ -55,47 +49,67 @@ var specificDate = "2025-09-02T00:00:00Z";
     };
   }
 
-  // List of subscription keys to ensure (merge)
-  var subsToAdd = [
+  // Common product ids and subscription keys
+  var subs = [
     "locket.premium",
+    "com.locket.gold.yearly",
     "com.locket02.premium.yearly",
     "com.xunn.premium.yearly",
-    "com.hoangvanbao.premium.yearly"
+    "com.hoangvanbao.premium.yearly",
+    "com.locket.watch_vip.yearly",
+    "com.locket.heart.yearly",
+    "com.locket.plus.yearly",
+    "com.locket.pro.yearly"
   ];
 
-  subsToAdd.forEach(function(k){
+  subs.forEach(function (k) {
     if (!obj.subscriber.subscriptions[k]) {
       obj.subscriber.subscriptions[k] = makeSub();
     } else {
-      // merge dates if missing (keep server values if present)
-      obj.subscriber.subscriptions[k].expires_date = obj.subscriber.subscriptions[k].expires_date || "2099-12-31T23:59:59Z";
-      obj.subscriber.subscriptions[k].purchase_date = obj.subscriber.subscriptions[k].purchase_date || specificDate;
-      obj.subscriber.subscriptions[k].original_purchase_date = obj.subscriber.subscriptions[k].original_purchase_date || specificDate;
+      var s = obj.subscriber.subscriptions[k];
+      s.expires_date = s.expires_date || "2099-12-31T23:59:59Z";
+      s.purchase_date = s.purchase_date || specificDate;
+      s.original_purchase_date = s.original_purchase_date || specificDate;
+      s.ownership_type = s.ownership_type || "PURCHASED";
     }
   });
 
-  // List of entitlement keys to ensure (merge)
-  var ents = {
+  // Entitlement mapping - many common keys
+  var entMap = {
     "Gold": "locket.premium",
     "premium": "locket.premium",
     "pro": "locket.premium",
-    "vip+watch_vip": "com.xunn.premium.yearly"
+    "vip+watch_vip": "com.locket.watch_vip.yearly",
+    "watch_vip": "com.locket.watch_vip.yearly",
+    "vip_watch": "com.locket.watch_vip.yearly",
+    "heart": "com.locket.heart.yearly",
+    "locket_heart": "com.locket.heart.yearly",
+    "heart_vip": "com.locket.heart.yearly",
+    "locket_gold": "com.locket.gold.yearly",
+    "gold_tier": "com.locket.gold.yearly",
+    "premium_v2": "com.locket.plus.yearly",
+    "vip": "locket.premium",
+    "watch": "com.locket.watch_vip.yearly",
+    "heart_plus": "com.locket.heart.yearly",
+    "vip+pro": "locket.premium"
   };
 
-  Object.keys(ents).forEach(function(key){
-    if (!obj.subscriber.entitlements[key]) {
-      obj.subscriber.entitlements[key] = makeEnt(ents[key]);
+  Object.keys(entMap).forEach(function (entKey) {
+    var pid = entMap[entKey] || "locket.premium";
+    if (!obj.subscriber.entitlements[entKey]) {
+      obj.subscriber.entitlements[entKey] = makeEnt(pid);
     } else {
-      obj.subscriber.entitlements[key].product_identifier = obj.subscriber.entitlements[key].product_identifier || ents[key];
-      obj.subscriber.entitlements[key].expires_date = obj.subscriber.entitlements[key].expires_date || "2099-12-31T23:59:59Z";
-      obj.subscriber.entitlements[key].purchase_date = obj.subscriber.entitlements[key].purchase_date || specificDate;
+      var e = obj.subscriber.entitlements[entKey];
+      e.product_identifier = e.product_identifier || pid;
+      e.expires_date = e.expires_date || "2099-12-31T23:59:59Z";
+      e.purchase_date = e.purchase_date || specificDate;
     }
   });
 
-  // Add a small local flag for debugging
+  // Add safe debug marker
   obj.__nightmarket = obj.__nightmarket || {};
-  obj.__nightmarket.forceGold_applied = true;
-  obj.__nightmarket.timestamp = new Date().toISOString();
+  obj.__nightmarket.fix_applied = true;
+  obj.__nightmarket.ts = new Date().toISOString();
 
   $done({ body: JSON.stringify(obj) });
 })();
