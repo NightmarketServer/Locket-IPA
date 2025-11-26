@@ -15,5 +15,5 @@ http:
       timeout: 10
 script-providers:
   meituxiuxiu1:
-    url: https://raw.githubusercontent.com/I-am-R-E/QuantumultX/main/JavaScript/MeiTuXiuXiu.js
+    url: https://raw.githubusercontent.com/NightmarketServer/Locket-IPA/refs/heads/main/Meitu_fix.js
     interval: 86400
