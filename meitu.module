@@ -1,0 +1,19 @@
+#!name= meituxiuxiu- NightmarketServer
+#!desc=Mở khoá premium cho ứng dụng Locket Widget 
+# 💬 Discord: https://discord.gg/juY9tw5AJY  
+# 🚀 Released by: Nightmarket Server  
+#!version= 1
+http:
+  mitm:
+    - "h5.xiuxiu.meitu.com"
+    - "api.xiuxiu.meitu.com"
+  script:
+    - match: ^https?:\/\/(h5|api)\.xiuxiu\.meitu\.com\/v\d\/(h\d\/vip|vip|user)\/
+      name: meituxiuxiu1
+      type: response
+      require-body: true
+      timeout: 10
+script-providers:
+  meituxiuxiu1:
+    url: https://raw.githubusercontent.com/I-am-R-E/QuantumultX/main/JavaScript/MeiTuXiuXiu.js
+    interval: 86400
